@@ -2,9 +2,9 @@
 #include "ConstSetting.h";
 #include <Arduino.h>;
 #include <Wire.h>;
-#include <EEPROM.h>;
 
-void QuaternionMeasure::magnetometerSetup(){
+
+void QuaternionMeasure::magnetometerSetup(){ // 지자기센서를 읽어들이기 위한 초반 세팅
   // Acc & Gyro Registers********************************************
   Wire.beginTransmission(MPU_ADDR);
   Wire.write(0x6A);   // USER CONTROL  
@@ -37,7 +37,7 @@ void QuaternionMeasure::magnetometerSetup(){
   delay(100);
 }
 
-void QuaternionMeasure::getMagXYZ(float *magXYZ){
+void QuaternionMeasure::getMagXYZ(float *magXYZ){ // 지자기센서의 값을 간단히 보정하여 magXYZ의 주소로 정보주입
   Wire.beginTransmission(MAG_ADDR);
   Wire.write(0x02);
   Wire.endTransmission(false);
@@ -109,14 +109,14 @@ void QuaternionMeasure::getMagXYZ(float *magXYZ){
   }
 }
 
-void QuaternionMeasure::accSetup(){
+void QuaternionMeasure::accSetup(){ // 가속도 센서 세팅
   Wire.beginTransmission(0x68);
   Wire.write(0x1C);
   Wire.write(0x10);
   Wire.endTransmission();
 }
 
-void QuaternionMeasure::getAccXYZ(float *accXYZ){
+void QuaternionMeasure::getAccXYZ(float *accXYZ){ // 가속도 센서의 값을 accXYZ주소로 주입
   Wire.beginTransmission(0x68);
   Wire.write(0x3B);
   Wire.endTransmission();
@@ -138,14 +138,14 @@ void QuaternionMeasure::getAccXYZ(float *accXYZ){
   
 }
 
-void QuaternionMeasure::getQuatFromAcc(float *accXYZ,float *accQ){
+void QuaternionMeasure::getQuatFromAcc(float *accXYZ,float *accQ){ // 가속도 센서로부터 쿼터니언 회전값 계산
   accQ[0]=sqrt((-accXYZ[2]+1)/2);
   accQ[1]=-accXYZ[1]/sqrt(2*(-accXYZ[2]+1));
   accQ[2]=accXYZ[0]/sqrt(2*(-accXYZ[2]+1));
   accQ[3]=0;
 }
 
-void QuaternionMeasure::getQuatFromMagConfigrated(float *magXYZ_config,float *magQ){
+void QuaternionMeasure::getQuatFromMagConfigrated(float *magXYZ_config,float *magQ){ // 자기장센서로부터 쿼터니언 회전값 계산
   float nom=square(magXYZ_config[0])+square(magXYZ_config[1]);
   if(magXYZ_config[0]>=0){
     magQ[3]=-magXYZ_config[1]/(sqrt(2*(nom+magXYZ_config[0]*sqrt(nom))));

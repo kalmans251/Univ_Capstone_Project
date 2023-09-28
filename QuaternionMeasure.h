@@ -1,6 +1,7 @@
 #ifndef _QUATERNIONMEASURE_h
 #define _QUATERNIONMEASURE_h
 
+
 class QuaternionMeasure
 {
   public:
@@ -26,8 +27,8 @@ class QuaternionMeasure
     int status_1; //지자기 데이터 유효 상태 체크
     const int MPU_ADDR = 0x68; //자이로,가속도 센서 주소
     const int MAG_ADDR = 0x0C; //지자기 센서 주소
-    float maxXYZ[3]={-999,-999,-999};
-    float minXYZ[3]={999,999,999};
+    float maxXYZ[3]={-999,-999,-999}; //지자기 최대값 저장소
+    float minXYZ[3]={999,999,999}; //지자기 최소값 저장소
 };
 
 #endif

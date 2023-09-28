@@ -2,7 +2,7 @@
 #include <Arduino.h>;
 
 
-void PrintVQ::printVec(float *vec){
+void PrintVQ::printVec(float *vec){ //3개의 백터인자 시리얼에 출력
   Serial.print("Vec( ");
   Serial.print(vec[0]);
   Serial.print(" , ");
@@ -12,7 +12,7 @@ void PrintVQ::printVec(float *vec){
   Serial.println(" )");
 }
 
-void PrintVQ::printQuat(float *quat){
+void PrintVQ::printQuat(float *quat){ //4개의 쿼터니언인자 시리얼에 출력
   Serial.print("Quat( ");
   Serial.print(quat[0]);
   Serial.print(" , ");

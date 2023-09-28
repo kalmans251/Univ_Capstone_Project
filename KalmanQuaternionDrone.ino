@@ -4,11 +4,11 @@
 #include "QuaternionMeasure.h";
 #include <Wire.h>;
 
-MatrixCalc matCalc;
-PrintVQ printVQ;
-QuaternionMeasure Qm;
+MatrixCalc matCalc; //MatrixCalc 클레스의 인스턴스 생성
+PrintVQ printVQ; //PrintVQ 클래스의 인스턴스 생성
+QuaternionMeasure Qm; //QuaternionMeasure 클래스의 인스턴스 생성
 
-uint32_t LoopTimer;
+uint32_t LoopTimer; // 루프 타이머
 
 float A[4][4];  //자이로 센서로 부터 받은 각가속도 회전 행렬
 float Ainv[4][4]; // 자이로 센서 각가속도 역행렬
