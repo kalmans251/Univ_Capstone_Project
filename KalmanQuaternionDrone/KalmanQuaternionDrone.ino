@@ -37,6 +37,7 @@ void setup() {
   matCalc.gyroSetup(); //자이로 켈리브레이션과 세팅
   Qm.accSetup();  //가속도 센서 세팅
   Serial.print("준비끝");
+  
  
 }
 
