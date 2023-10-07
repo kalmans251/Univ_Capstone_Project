@@ -19,6 +19,12 @@ void MatrixCalc::quaternionMultiplication(float *quat1, float *quat2,float *resu
 	resultQ[3] = quat1[0] * quat2[3] + quat1[1] * quat2[2] - quat1[2] * quat2[1] + quat1[3] * quat2[0];
 
 }
+void MatrixCalc::getControlQuaternion(float *quat1,float *quat2,float *resultQ){
+  resultQ[0] = quat1[0] * quat2[0] + quat1[1] * quat2[1] + quat1[2] * quat2[2] + quat1[3] * quat2[3];
+	resultQ[1] = -quat1[0] * quat2[1] + quat1[1] * quat2[0] - quat1[2] * quat2[3] + quat1[3] * quat2[2];
+	resultQ[2] = -quat1[0] * quat2[2] + quat1[1] * quat2[3] + quat1[2] * quat2[0] - quat1[3] * quat2[1];
+	resultQ[3] = -quat1[0] * quat2[3] - quat1[1] * quat2[2] + quat1[2] * quat2[1] + quat1[3] * quat2[0];
+}
 
 void MatrixCalc::gyroSetup(){ //자이로 센서값의 켈리브레이션. 
   Wire.beginTransmission(0x68);
@@ -86,6 +92,8 @@ void MatrixCalc::calcQuaternionState(float A[][4],float *Xk){ // 회전행렬과
   Xk[2]=room[2]/nom;
   Xk[3]=room[3]/nom;
 }
+
+
 
 void MatrixCalc::matrixMultiplicationResultBack(float mat1[][4],float mat2[][4]){ // 4x4 행렬의 곱 (결과치는 mat2로 갱신)
   Result[0][0]= mat1[0][0]*mat2[0][0]  +mat1[0][1]*mat2[1][0]  +mat1[0][2]*mat2[2][0]  +mat1[0][3]*mat2[3][0]; //[0][0]
@@ -226,6 +234,7 @@ void MatrixCalc::inverse_matrix_4x4(float *R,float matrix[][4], float resultMat[
         {
             if(j==i){
               a_arr[i + 4 * j] = matrix[j][i]+R[i];
+            }
         }
     }
 
@@ -361,7 +370,7 @@ void MatrixCalc::inverse_matrix_4x4(float *R,float matrix[][4], float resultMat[
         }
     }
 
-  }
+}
 
 
 
@@ -509,8 +518,7 @@ void MatrixCalc::inverse_matrix_4x4(float matrix[][4], float resultMat[][4]){  /
         }
     }
 
-  }
-
+}
 
 
 

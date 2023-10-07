@@ -8,6 +8,7 @@ class MatrixCalc
   public:
     void rotateVectorQuaternion(float *vec,float *quat); //백터를 쿼터니언으로 회전하여 백터 갱신.
     void quaternionMultiplication(float *quat1,float *quat2,float *resultQ); //쿼터니언 곱 resultQ 갱신.
+    void getControlQuaternion(float *quat1,float *quat2,float *resultQ);
     void gyroSetup(); //자이로 셋업
     void getRotationMatFromGyro(float A[][4]); //자이로 센서로부터 얻은 회전 행렬. 결과는 A로 갱신
     void calcQuaternionState(float A[][4],float *Xk); // 결과는 Xk로 갱신.
