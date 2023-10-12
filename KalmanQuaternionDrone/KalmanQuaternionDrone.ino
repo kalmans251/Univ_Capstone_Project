@@ -27,6 +27,7 @@ float measureQ[4]; // 관측 쿼터니언 (지자기 회전 쿼터니언과 가�
 float controlQ[4]; //컨트롤 쿼터니언 (dsired자세로 이동하기위한 쿼터니언 정보)
 float desiredQ[4]={1,0,0,0}; // 목표 자세 쿼터니언(드론의 목표 자세를 나타내는 쿼터니언. 조종기와 연동해야 한다.)
 float difAngle[3]; // 목표 자세까지의 필요한 각 변위 x,y,z
+float pidPitchYawRoll[3];
 int mode;
 void setup() {
   Qm.ConfigMod=0;
@@ -68,7 +69,8 @@ void loop() {
   printVQ.printQuat(controlQ);
   pidControl.calcRotateDiff(controlQ,difAngle);
   printVQ.printVec(difAngle);
-
+  pidControl.calcPid(difAngle,pidPitchYawRoll);
+  
   while(micros()-LoopTimer < DT*1000000){ //적분 타이밍을 맞추기위해 루프.
   //Serial.println(micros()-LoopTimer);
   };
