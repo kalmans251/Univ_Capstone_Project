@@ -30,6 +30,37 @@ void QuaternionMeasure::magnetometerSetup(){ // 지자기센서를 읽어들이�
   Wire.endTransmission(true);
   delay(100);
     
+  Wire.beginTransmission(MAG_ADDR);   //ROM WRITE MODE
+  Wire.write(0x0A);   //  CONTROL 1
+  Wire.write(0b00011111); // 1 for 16 bit or 0 for 14 bit output, 1111 FUSE ROM ACCESS MODE
+  Wire.endTransmission(true);
+  delay(200);
+
+  Wire.beginTransmission(MAG_ADDR);   //GET MAGNETIC SENSITIVITY DATA FOR CONVERTING RAW DATA
+  Wire.write(0x10);     //  ASAX  
+  Wire.endTransmission(false);
+  Wire.requestFrom(MAG_ADDR, 3 , true);  //GET SENSITIVITY ADJUSMENT VALUES STARTS AT ASAX
+  Msens_x = Wire.read();    //GET X SENSITIVITY ADJUSMENT VALUE
+  Msens_y = Wire.read();    //GET Y SENSITIVITY ADJUSMENT VALUE
+  Msens_z = Wire.read();    //GET Z SENSITIVITY ADJUSMENT VALUE
+  Serial.println(Msens_x);
+  Serial.println(Msens_y);
+  Serial.println(Msens_z);
+  Wire.endTransmission(true);
+  asax = (((Msens_x-128))/256.0f)+1.0f;
+  asay = (((Msens_y-128))/256.0f)+1.0f;
+  asaz = (((Msens_z-128))/256.0f)+1.0f;
+  Serial.print("Mx Sensitivity: ");  Serial.println(asax);
+  Serial.print("My Sensitivity: ");  Serial.println(asay);
+  Serial.print("Mz Sensitivity: ");  Serial.println(asaz); 
+  delay(200);
+
+  Wire.beginTransmission(MAG_ADDR);   //SLEEP MODE
+  Wire.write(0x0A);   //  CONTROL 1
+  Wire.write(0b00010000);  // 1 for 16 bit or 0 for 14 bit output, 0000 SLEEP MODE
+  Wire.endTransmission(true);
+  delay(200);
+
   Wire.beginTransmission(MAG_ADDR);   //CONT MODE 2
   Wire.write(0x0A);
   Wire.write(0b00010110); // 1 for 16 bit or 0 for 14 bit output, 0110 FOR CONT MODE 2 (X Hz?) 
@@ -52,9 +83,9 @@ void QuaternionMeasure::getMagXYZ(float *magXYZ){ // 지자기센서의 값을 �
     
     if(ConfigMod==1){
       Wire.requestFrom(MAG_ADDR, 7 , true);
-      magXYZ[1] =  Wire.read() | Wire.read()<<8;;
-      magXYZ[0] =  Wire.read() | Wire.read()<<8;;    
-      magXYZ[2] =  -(Wire.read() | Wire.read()<<8);;
+      magXYZ[1] =  (int16_t)(Wire.read() | Wire.read()<<8);
+      magXYZ[0] =  (int16_t)(Wire.read() | Wire.read()<<8);  
+      magXYZ[2] =  -(int16_t)(Wire.read() | Wire.read()<<8);
       Wire.endTransmission(true);
       
       if(maxXYZ[0] < magXYZ[0]){
@@ -78,6 +109,8 @@ void QuaternionMeasure::getMagXYZ(float *magXYZ){ // 지자기센서의 값을 �
       Serial.print("( ");
       Serial.print(maxXYZ[0]);
       Serial.print(" , ");
+      Serial.print(magXYZ[0]);
+      Serial.print(" , ");
       Serial.print(minXYZ[0]);
       Serial.print(" ),");
 
@@ -95,9 +128,9 @@ void QuaternionMeasure::getMagXYZ(float *magXYZ){ // 지자기센서의 값을 �
     }
     else{
       Wire.requestFrom(MAG_ADDR, 7 , true);
-      magXYZ[1] =  (Wire.read() | Wire.read()<<8);;
-      magXYZ[0] =  (Wire.read() | Wire.read()<<8);;    
-      magXYZ[2] =  -(Wire.read() | Wire.read()<<8);;
+      magXYZ[1] =  ((int16_t)(Wire.read() | Wire.read()<<8));
+      magXYZ[0] =  ((int16_t)(Wire.read() | Wire.read()<<8));    
+      magXYZ[2] =  -((int16_t)(Wire.read() | Wire.read()<<8));
       float x=(magXYZ[0]-(maxX+minX)/2)*((maxX-minX+maxY-minY+maxZ-minZ)/6)*(2/(maxX-minX));
       float y=(magXYZ[1]-(maxY+minY)/2)*((maxX-minX+maxY-minY+maxZ-minZ)/6)*(2/(maxY-minY));
       float z=(magXYZ[2]-(maxZ+minZ)/2)*((maxX-minX+maxY-minY+maxZ-minZ)/6)*(2/(maxZ-minZ));
@@ -123,14 +156,14 @@ void QuaternionMeasure::getAccXYZ(float *accXYZ){ // 가속도 센서의 값을 
   Wire.requestFrom(0x68,6);
 
   if(ConfigMod==1){
-    accXYZ[0] = -(Wire.read()<<8 | Wire.read())/4096.;
-    accXYZ[1] = -(Wire.read()<<8 | Wire.read())/4096.;
-    accXYZ[2] = -(Wire.read()<<8 | Wire.read())/4096.+0.08;
+    accXYZ[0] = -((int16_t)(Wire.read()<<8 | Wire.read()))/4096.;
+    accXYZ[1] = -((int16_t)(Wire.read()<<8 | Wire.read()))/4096.;
+    accXYZ[2] = -((int16_t)(Wire.read()<<8 | Wire.read()))/4096.+0.08;
   }else{
-    accXYZ[0] = -(Wire.read()<<8 | Wire.read())/4096.;
-    accXYZ[1] = -(Wire.read()<<8 | Wire.read())/4096.;
-    accXYZ[2] = -(Wire.read()<<8 | Wire.read())/4096.+0.08;
-    float nom=sqrt(square(accXYZ[0])+square(accXYZ[1])+square(accXYZ[2]));
+    accXYZ[0] = -((int16_t)(Wire.read()<<8 | Wire.read()))/4096.;
+    accXYZ[1] = -((int16_t)(Wire.read()<<8 | Wire.read()))/4096.;
+    accXYZ[2] = -((int16_t)(Wire.read()<<8 | Wire.read()))/4096.+0.08;
+    float nom=sqrt(pow(accXYZ[0],2)+pow(accXYZ[1],2)+pow(accXYZ[2],2));
     accXYZ[0]/=nom;
     accXYZ[1]/=nom;
     accXYZ[2]/=nom;
@@ -146,7 +179,7 @@ void QuaternionMeasure::getQuatFromAcc(float *accXYZ,float *accQ){ // 가속도 
 }
 
 void QuaternionMeasure::getQuatFromMagConfigrated(float *magXYZ_config,float *magQ){ // 자기장센서로부터 쿼터니언 회전값 계산
-  float nom=square(magXYZ_config[0])+square(magXYZ_config[1]);
+  float nom=pow(magXYZ_config[0],2)+pow(magXYZ_config[1],2);
   if(magXYZ_config[0]>=0){
     magQ[3]=-magXYZ_config[1]/(sqrt(2*(nom+magXYZ_config[0]*sqrt(nom))));
     magQ[0]=sqrt(nom+magXYZ_config[0]*sqrt(nom))/sqrt(2*nom);

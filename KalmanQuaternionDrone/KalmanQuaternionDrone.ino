@@ -17,7 +17,7 @@ float Pk[4][4]={{0.1,0,0,0},{0,0.1,0,0},{0,0,0.1,0},{0,0,0,0.1}}; //공분산오
 float Pkinv[4][4]; //공부산 오차의 역행렬
 float Xk[4]={1,0,0,0}; //추정값(칼만필터 적용된 자세 쿼터니언)
 float R[4]={0.00001,0.00001,0.00001,0.001}; //가속도와 지자기 센서의 표준편차 제곱
-float Q[4][4]={{0.00000000001,0,0,0},{0,0.00000000001,0,0},{0,0,0.00000000001,0},{0,0,0,0.00000000001}}; //자이로 센서의 표준편차 제곱
+float Q[4][4]={{0.000001,0,0,0},{0,0.000001,0,0},{0,0,0.000001,0},{0,0,0,0.000001}}; //자이로 센서의 표준편차 제곱
 float K[4][4]; // 칼만Gain 
 float magXYZ[3]; // 지자기 센서값
 float magQ[4]; // 지자기 회전 쿼터니언
@@ -31,12 +31,12 @@ float pidPitchYawRoll[3];
 int mode;
 void setup() {
   Qm.ConfigMod=0;
-  Serial.begin(115200); // 시리얼 포트 9600으로 설정.
-  Wire.setClock(400000); // 센서 클럭 설정
-  Wire.begin(); //와이어 시작
-  Qm.magnetometerSetup(); //Magnetometer 기본 세팅
-  matCalc.gyroSetup(); //자이로 켈리브레이션과 세팅
-  Qm.accSetup();  //가속도 센서 세팅
+  Serial.begin(115200); // 시리얼 포트 9600으로 설정. *
+  Wire.setClock(400000); // 센서 클럭 설정 *
+  Wire.begin(); //와이어 시작 *
+  Qm.magnetometerSetup(); //Magnetometer 기본 세팅 *
+  matCalc.gyroSetup(); //자이로 켈리브레이션과 세팅 *
+  Qm.accSetup();  //가속도 센서 세팅 *
   Serial.print("준비끝");
   
  
@@ -44,10 +44,11 @@ void setup() {
 
 void loop() {
   
-  Qm.getAccXYZ(accXYZ); //가속도 계산
-  Qm.getMagXYZ(magXYZ); //자기장 센서 계산
-  Qm.getQuatFromAcc(accXYZ,accQuat); //가속도 센서값을 계산하여 가속도 회전 쿼터니언 계산
-  matCalc.rotateVectorQuaternion(magXYZ,accQuat); //가속도 쿼터니언 회전으로 자기장 센서값 회전하여 보정
+
+  Qm.getAccXYZ(accXYZ); //가속도 계산 *
+  Qm.getMagXYZ(magXYZ); //자기장 센서 계산 *
+  Qm.getQuatFromAcc(accXYZ,accQuat); //가속도 센서값을 계산하여 가속도 회전 쿼터니언 계산 *
+  matCalc.rotateVectorQuaternion(magXYZ,accQuat); //가속도 쿼터니언 회전으로 자기장 센서값 회전하여 보정 *
   Qm.getQuatFromMagConfigrated(magXYZ,magQ); // 보정을 끝마친 자기장센서값을 통해 자기장 회전 쿼터니언 추출 
   matCalc.quaternionMultiplication(accQuat,magQ,measureQ); //가속도 회전 쿼터니언과 자기장 회전 쿼터니언을 합쳐 최종 관측쿼터니언을 추출. (MeasureMent 추출 마무리). 
 
@@ -63,13 +64,14 @@ void loop() {
   matCalc.calcXkMeasureKalmanGain(Xk,measureQ,K); //Xk 와 Mesure 을 뺀후 칼만필터 곱 한 후 다시 Xk 합
   matCalc.calcCovarianceError(Pk,K); //공분산 오차 Pk 갱신
 
-  //printVQ.printQuat(Xk); //Xk 쿼터니언을 출력
+  printVQ.printQuat(Xk); //Xk 쿼터니언을 출력
   //Serial.print(Xk[0]);
-  matCalc.getControlQuaternion(desiredQ,Xk,controlQ); //컨트롤 쿼터니언 계산
-  printVQ.printQuat(controlQ);
-  pidControl.calcRotateDiff(controlQ,difAngle);
-  printVQ.printVec(difAngle);
-  pidControl.calcPid(difAngle,pidPitchYawRoll);
+
+  // matCalc.getControlQuaternion(desiredQ,Xk,controlQ); //컨트롤 쿼터니언 계산
+  // printVQ.printQuat(controlQ);
+  // pidControl.calcRotateDiff(controlQ,difAngle);
+  // printVQ.printVec(difAngle);
+  // pidControl.calcPid(difAngle,pidPitchYawRoll);
   
   while(micros()-LoopTimer < DT*1000000){ //적분 타이밍을 맞추기위해 루프.
   //Serial.println(micros()-LoopTimer);

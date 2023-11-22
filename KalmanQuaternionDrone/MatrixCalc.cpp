@@ -40,9 +40,9 @@ void MatrixCalc::gyroSetup(){ //자이로 센서값의 켈리브레이션.
     Wire.write(0x43);
     Wire.endTransmission();
     Wire.requestFrom(0x68,6);
-    RateCalibrationx += (float)(Wire.read()<<8 | Wire.read())/65.5;
-    RateCalibrationy += (float)(Wire.read()<<8 | Wire.read())/65.5;
-    RateCalibrationz += (float)(Wire.read()<<8 | Wire.read())/65.5;
+    RateCalibrationx += ((int16_t)(Wire.read()<<8 | Wire.read()))/65.5;
+    RateCalibrationy += ((int16_t)(Wire.read()<<8 | Wire.read()))/65.5;
+    RateCalibrationz += ((int16_t)(Wire.read()<<8 | Wire.read()))/65.5;
     delay(1);
   }
   RateCalibrationx/=RateCalibrationNumber;
@@ -56,9 +56,9 @@ void MatrixCalc::getRotationMatFromGyro(float (*A)[4]){ // 자이로 센서로�
   Wire.write(0x43);
   Wire.endTransmission();
   Wire.requestFrom(0x68,6);
-  temp[0]=PI*((float)(Wire.read()<<8 | Wire.read())/65.5-RateCalibrationx)/180;
-  temp[1]=PI*((float)(Wire.read()<<8 | Wire.read())/65.5-RateCalibrationy)/180;
-  temp[2]=PI*((float)(Wire.read()<<8 | Wire.read())/65.5-RateCalibrationz)/180;
+  temp[0]=PI*(((int16_t)(Wire.read()<<8 | Wire.read()))/65.5-RateCalibrationx)/180;
+  temp[1]=PI*(((int16_t)(Wire.read()<<8 | Wire.read()))/65.5-RateCalibrationy)/180;
+  temp[2]=PI*(((int16_t)(Wire.read()<<8 | Wire.read()))/65.5-RateCalibrationz)/180;
   
   A[0][0]=1;
   A[0][1]=-temp[0]*DT*1/2;
@@ -86,7 +86,7 @@ void MatrixCalc::calcQuaternionState(float A[][4],float *Xk){ // 회전행렬과
   room[1]=A[1][0]*Xk[0]+A[1][1]*Xk[1]+A[1][2]*Xk[2]+A[1][3]*Xk[3];
   room[2]=A[2][0]*Xk[0]+A[2][1]*Xk[1]+A[2][2]*Xk[2]+A[2][3]*Xk[3];
   room[3]=A[3][0]*Xk[0]+A[3][1]*Xk[1]+A[3][2]*Xk[2]+A[3][3]*Xk[3];
-  float nom=sqrt(square(room[0])+square(room[1])+square(room[2])+square(room[3]));
+  float nom=sqrt(pow(room[0],2)+pow(room[1],2)+pow(room[2],2)+pow(room[3],2));
   Xk[0]=room[0]/nom;
   Xk[1]=room[1]/nom;
   Xk[2]=room[2]/nom;
@@ -353,7 +353,7 @@ void MatrixCalc::inverse_matrix_4x4(float *R,float matrix[][4], float resultMat[
     det = a_arr[0] * inv[0] + a_arr[1] * inv[4] + a_arr[2] * inv[8] + a_arr[3] * inv[12];
 
     if (det == 0)
-        return false;
+        det=0;
 
     det = 1.0 / det;
 
@@ -501,7 +501,7 @@ void MatrixCalc::inverse_matrix_4x4(float matrix[][4], float resultMat[][4]){  /
     det = a_arr[0] * inv[0] + a_arr[1] * inv[4] + a_arr[2] * inv[8] + a_arr[3] * inv[12];
 
     if (det == 0)
-        return false;
+        det=0;
 
     det = 1.0 / det;
 

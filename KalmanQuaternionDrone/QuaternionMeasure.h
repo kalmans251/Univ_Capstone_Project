@@ -24,6 +24,9 @@ class QuaternionMeasure
     int ConfigMod;
 
   private:
+    float asax, asay, asaz;
+    float Msens_x,Msens_y, Msens_z;
+    
     int status_1; //지자기 데이터 유효 상태 체크
     const int MPU_ADDR = 0x68; //자이로,가속도 센서 주소
     const int MAG_ADDR = 0x0C; //지자기 센서 주소
