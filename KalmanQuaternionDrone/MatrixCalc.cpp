@@ -353,7 +353,7 @@ void MatrixCalc::inverse_matrix_4x4(float *R,float matrix[][4], float resultMat[
     det = a_arr[0] * inv[0] + a_arr[1] * inv[4] + a_arr[2] * inv[8] + a_arr[3] * inv[12];
 
     if (det == 0)
-        det=0;
+        return;
 
     det = 1.0 / det;
 
@@ -501,7 +501,7 @@ void MatrixCalc::inverse_matrix_4x4(float matrix[][4], float resultMat[][4]){  /
     det = a_arr[0] * inv[0] + a_arr[1] * inv[4] + a_arr[2] * inv[8] + a_arr[3] * inv[12];
 
     if (det == 0)
-        det=0;
+        return;
 
     det = 1.0 / det;
 

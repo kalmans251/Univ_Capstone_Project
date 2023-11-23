@@ -33,11 +33,18 @@ float controlQ[4]; //컨트롤 쿼터니언 (dsired자세로 이동하기위한 
 float desiredQ[4]={1,0,0,0}; // 목표 자세 쿼터니언(드론의 목표 자세를 나타내는 쿼터니언. 조종기와 연동해야 한다.)
 float difAngle[3]; // 목표 자세까지의 필요한 각 변위 x,y,z
 float pidPitchYawRoll[3];
+float yawA[4][4];
+float yawQuat[4];
+float yawRate;
 int mode;
 
 void ch1_yaw(){
   ch1_time = micros();
   if(ch1_State ==0){
+    if(digitalRead(0)==LOW){
+      ch1_State=0;
+      return;
+    }
     ch1_State=1;
     ch1_time_save=ch1_time;
   }else if(ch1_State==1){
@@ -49,6 +56,10 @@ void ch1_yaw(){
 void ch2_pitch(){
   ch2_time = micros();
   if(ch2_State ==0){
+    if(digitalRead(1)==LOW){
+      ch2_State=0;
+      return;
+    }
     ch2_State=1;
     ch2_time_save=ch2_time;
   }else if(ch2_State==1){
@@ -60,6 +71,10 @@ void ch2_pitch(){
 void ch3_throt(){
   ch3_time = micros();
   if(ch3_State ==0){
+    if(digitalRead(6)==LOW){
+      ch3_State=0;
+      return;
+    }
     ch3_State=1;
     ch3_time_save=ch3_time;
   }else if(ch3_State==1){
@@ -71,6 +86,10 @@ void ch3_throt(){
 void ch4_roll(){
   ch4_time = micros();
   if(ch4_State ==0){
+    if(digitalRead(8)==LOW){
+      ch4_State=0;
+      return;
+    }
     ch4_State=1;
     ch4_time_save=ch4_time;
   }else if(ch4_State==1){
@@ -95,11 +114,11 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(1), ch2_pitch, CHANGE);
   pinMode(6,INPUT);
   attachInterrupt(digitalPinToInterrupt(6), ch3_throt, CHANGE);
-  pinMode(7,INPUT);
-  attachInterrupt(digitalPinToInterrupt(7), ch4_roll, CHANGE);
+  pinMode(8,INPUT);
+  attachInterrupt(digitalPinToInterrupt(8), ch4_roll, CHANGE);
 
   Serial.print("준비끝");
-  delay(600)
+  delay(600);
   Serial.print("시작");
   delay(400);
 }
@@ -125,7 +144,7 @@ void loop() {
   matCalc.calcXkMeasureKalmanGain(Xk,measureQ,K); //Xk 와 Mesure 을 뺀후 칼만필터 곱 한 후 다시 Xk 합
   matCalc.calcCovarianceError(Pk,K); //공분산 오차 Pk 갱신
 
-  printVQ.printQuat(Xk); //Xk 쿼터니언을 시리얼 모니터에 출력
+  //printVQ.printQuat(Xk); //Xk 쿼터니언을 시리얼 모니터에 출력
 
   // PID제어 초석.
   // matCalc.getControlQuaternion(desiredQ,Xk,controlQ); //컨트롤 쿼터니언 계산
@@ -135,9 +154,9 @@ void loop() {
   // pidControl.calcPid(difAngle,pidPitchYawRoll);
   
   // 조종기 수신.
-  // Serial.print("Ch1(YAW): ");
-  // Serial.print(receive_PitchYawRollThrot[1]);
-  // Serial.println("");
+  Serial.print("Ch1(YAW): ");
+  Serial.print(receive_PitchYawRollThrot[1]);
+  Serial.println("");
   // Serial.print("Ch2(PITCH): ");
   // Serial.print(receive_PitchYawRollThrot[0]);
   // Serial.println("");
@@ -147,7 +166,38 @@ void loop() {
   // Serial.print("Ch4(ROLL): ");
   // Serial.print(receive_PitchYawRollThrot[2]);
   // Serial.println("");
+   
+  yawRate=PI*(45/500.)*(1500-receive_PitchYawRollThrot[1])/180.*DT*1/2;
+  
+  yawA[0][0]=1;
+  yawA[0][1]=0;
+  yawA[0][2]=0;
+  yawA[0][3]=-yawRate;
 
+  yawA[1][0]=0;
+  yawA[1][1]=1;
+  yawA[1][2]=-yawRate;
+  yawA[1][3]=0;
+
+  yawA[2][0]=0;
+  yawA[2][1]=yawRate;
+  yawA[2][2]=1;
+  yawA[2][3]=0;
+
+  yawA[3][0]=yawRate;
+  yawA[3][1]=0;
+  yawA[3][2]=0;
+  yawA[3][3]=1;
+
+  matCalc.calcQuaternionState(yawA,desiredQ);
+  
+
+ 
+  Serial.print(desiredQ[0]);
+  Serial.print(", ");
+  Serial.print(desiredQ[3]);
+  Serial.println("");
+  
   while(micros()-LoopTimer < DT*1000000){ //적분 타이밍을 맞추기위해 루프.
   //Serial.println(micros()-LoopTimer);
   };
