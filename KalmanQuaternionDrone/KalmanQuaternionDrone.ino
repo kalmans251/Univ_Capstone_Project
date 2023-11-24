@@ -43,6 +43,7 @@ int mode;
 float theta;
 float quatPitchRoll[4]={1,0,0,0};
 float finalDesiredQ[4];
+int setDesiredQ=0;
 
 void ch1_yaw(){
   ch1_time = micros();
@@ -136,8 +137,12 @@ void loop() {
   Qm.getQuatFromAcc(accXYZ,accQuat); //가속도 센서값을 계산하여 가속도 회전 쿼터니언 계산 *
   matCalc.rotateVectorQuaternion(magXYZ,accQuat); //가속도 쿼터니언 회전으로 자기장 센서값 회전하여 보정 *
   Qm.getQuatFromMagConfigrated(magXYZ,magQ); // 보정을 끝마친 자기장센서값을 통해 자기장 회전 쿼터니언 추출 
+  if(setDesiredQ == 0){
+    matCalc.quaternionMultiplication(desiredQ,magQ,desiredQ);
+    setDesiredQ=1;
+  }
   matCalc.quaternionMultiplication(accQuat,magQ,measureQ); //가속도 회전 쿼터니언과 자기장 회전 쿼터니언을 합쳐 최종 관측쿼터니언을 추출. (MeasureMent 추출 마무리). 
-
+  
   matCalc.getRotationMatFromGyro(A); // 자이로 센서에서 받은값을 회전 행렬 A로 갱신
   matCalc.calcQuaternionState(A,Xk); //Xk A행렬로 dt시간동안의 회전 
   matCalc.inverse_matrix_4x4(A,Ainv); //Ainv 생성
