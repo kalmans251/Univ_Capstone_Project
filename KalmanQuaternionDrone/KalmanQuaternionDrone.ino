@@ -36,7 +36,13 @@ float pidPitchYawRoll[3];
 float yawA[4][4];
 float yawQuat[4];
 float yawRate;
+int dP;
+int dR;
+float nom;
 int mode;
+float theta;
+float quatPitchRoll[4]={1,0,0,0};
+float finalDesiredQ[4];
 
 void ch1_yaw(){
   ch1_time = micros();
@@ -154,9 +160,9 @@ void loop() {
   // pidControl.calcPid(difAngle,pidPitchYawRoll);
   
   // 조종기 수신.
-  Serial.print("Ch1(YAW): ");
-  Serial.print(receive_PitchYawRollThrot[1]);
-  Serial.println("");
+  // Serial.print("Ch1(YAW): ");
+  // Serial.print(receive_PitchYawRollThrot[1]);
+  // Serial.println("");
   // Serial.print("Ch2(PITCH): ");
   // Serial.print(receive_PitchYawRollThrot[0]);
   // Serial.println("");
@@ -191,12 +197,24 @@ void loop() {
 
   matCalc.calcQuaternionState(yawA,desiredQ);
   
+  dP=receive_PitchYawRollThrot[2]-1500;
+  dR=receive_PitchYawRollThrot[0]-1500;
+
+  nom=sqrt(pow(dP,2)+pow(dR,2));
+  theta = (30/500.)*(PI/180)*nom;
+  quatPitchRoll[0]=cos(theta/2.);
+  quatPitchRoll[1]=(dP/nom)*sin(theta/2.);
+  quatPitchRoll[2]=(dR/nom)*sin(theta/2.);
+
+  matCalc.quaternionMultiplication(quatPitchRoll,desiredQ,finalDesiredQ);
+
+  printVQ.printQuat(finalDesiredQ);
 
  
-  Serial.print(desiredQ[0]);
-  Serial.print(", ");
-  Serial.print(desiredQ[3]);
-  Serial.println("");
+  // Serial.print(desiredQ[0]);
+  // Serial.print(", ");
+  // Serial.print(desiredQ[3]);
+  // Serial.println("");
   
   while(micros()-LoopTimer < DT*1000000){ //적분 타이밍을 맞추기위해 루프.
   //Serial.println(micros()-LoopTimer);
