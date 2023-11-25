@@ -5,6 +5,96 @@
 #include "PidControll.h";
 #include <Wire.h>;
 
+
+//===================================================================== // pwm 주파수 변경 low level programming 으로 구현 예시
+
+// #define PWM_PIN 6
+
+// void setup() {
+//   // Set the PWM frequency for pin 6 (TC4)
+//   configurePWMFrequency(PWM_PIN, 10000);  // Set the desired frequency (e.g., 10 kHz)
+// }
+
+// void loop() {
+//   // Your main code here
+// }
+
+// void configurePWMFrequency(int pin, int frequency) {
+//   // Map pin to timer/counter
+//   const uint8_t timer = g_APinDescription[pin].ulPWMChannel;
+  
+//   // Set the PWM frequency
+//   uint16_t prescaler = 1;  // Adjust prescaler as needed
+//   REG_GCLK_CLKCTRL = GCLK_CLKCTRL_ID(TC4_GCLK_ID) | // Generic Clock Timer 4
+//                      GCLK_CLKCTRL_CLKEN |           // Enable GCLK
+//                      GCLK_CLKCTRL_GEN_GCLK0;        // Use GCLK0
+
+//   REG_TC4_CTRLA &= ~TC_CTRLA_ENABLE;  // Disable TC4
+//   while (REG_TC4_STATUS & TC_STATUS_SYNCBUSY);  // Wait for synchronization
+
+//   REG_TC4_COUNT16_CC0 = F_CPU / (prescaler * frequency) - 1;
+//   while (REG_TC4_STATUS & TC_STATUS_SYNCBUSY);  // Wait for synchronization
+
+//   REG_TC4_CTRLA |= TC_CTRLA_ENABLE;  // Enable TC4
+//   while (REG_TC4_STATUS & TC_STATUS_SYNCBUSY);  // Wait for synchronization
+// }
+
+//=====================================================================  // pwm duty 변경 low level programming 으로 구현 예시
+
+// #define PWM_PIN 6
+
+// void setup() {
+//   // Initialize timer for PWM
+//   configurePWM();
+// }
+
+// void loop() {
+//   // Change duty cycle from 0 to 255 and back
+//   for (int dutyCycle = 0; dutyCycle <= 255; dutyCycle++) {
+//     setPWMDutyCycle(PWM_PIN, dutyCycle);
+//     delay(10);  // Delay for a short time to observe changes
+//   }
+
+//   for (int dutyCycle = 255; dutyCycle >= 0; dutyCycle--) {
+//     setPWMDutyCycle(PWM_PIN, dutyCycle);
+//     delay(10);  // Delay for a short time to observe changes
+//   }
+// }
+
+// void configurePWM() {
+//   // Map pin to timer/counter
+//   const uint8_t timer = g_APinDescription[PWM_PIN].ulPWMChannel;
+
+//   // Set the PWM frequency (using a prescaler of 1, adjust as needed)
+//   REG_GCLK_CLKCTRL = GCLK_CLKCTRL_ID(TC4_GCLK_ID) | 
+//                      GCLK_CLKCTRL_CLKEN | 
+//                      GCLK_CLKCTRL_GEN_GCLK0;
+
+//   REG_TC4_CTRLA &= ~TC_CTRLA_ENABLE;  
+//   while (REG_TC4_STATUS & TC_STATUS_SYNCBUSY);
+
+//   REG_TC4_CTRLA = TC_CTRLA_MODE_COUNT16 | TC_CTRLA_WAVEGEN_MFRQ;
+//   while (REG_TC4_STATUS & TC_STATUS_SYNCBUSY);
+
+//   REG_TC4_CTRLA |= TC_CTRLA_ENABLE;
+//   while (REG_TC4_STATUS & TC_STATUS_SYNCBUSY);
+// }
+
+// void setPWMDutyCycle(int pin, int dutyCycle) {
+//   const uint8_t timer = g_APinDescription[pin].ulPWMChannel;
+
+//   REG_TC4_CTRLA &= ~TC_CTRLA_ENABLE;
+//   while (REG_TC4_STATUS & TC_STATUS_SYNCBUSY);
+
+//   REG_TC4_COUNT16_CC0 = map(dutyCycle, 0, 4095, 0, REG_TC4_COUNT16_CC0_MAX);
+//   while (REG_TC4_STATUS & TC_STATUS_SYNCBUSY);
+
+//   REG_TC4_CTRLA |= TC_CTRLA_ENABLE;
+//   while (REG_TC4_STATUS & TC_STATUS_SYNCBUSY);
+// }
+//=====================================================================
+
+
 MatrixCalc matCalc; //MatrixCalc 클레스의 인스턴스 생성
 PrintVQ printVQ; //PrintVQ 클래스의 인스턴스 생성
 QuaternionMeasure Qm; //QuaternionMeasure 클래스의 인스턴스 생성
@@ -44,6 +134,7 @@ float theta;
 float quatPitchRoll[4]={1,0,0,0};
 float finalDesiredQ[4];
 int setDesiredQ=0;
+float moter2,moter3,moter4,moter5;
 
 void ch1_yaw(){
   ch1_time = micros();
@@ -104,8 +195,12 @@ void ch4_roll(){
     receive_PitchYawRollThrot[2]=ch4_time-ch4_time_save;
   }
 }
+//===================================
+// void moter_pwm_send(){
 
+// }
 
+//===================================
 void setup() {
   Qm.ConfigMod=0;
   Serial.begin(115200); // 시리얼 포트 9600으로 설정. *
@@ -123,6 +218,13 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(6), ch3_throt, CHANGE);
   pinMode(8,INPUT);
   attachInterrupt(digitalPinToInterrupt(8), ch4_roll, CHANGE);
+
+  // analogWriteFrequency(2,250);// Right Up = 2 pin , Right Down = 3pin , Left Up= 5pin Left Down =4pin
+  // analogWriteFrequency(3,250);
+  // analogWriteFrequency(4,250);
+  // analogWriteFrequency(5,250);
+  analogWriteResolution(12);
+  // attachInterrupt(digitalPinToInterrupt(0), moter_pwm_send, RISING); 
 
   Serial.print("준비끝");
   delay(600);
@@ -177,9 +279,10 @@ void loop() {
   // Serial.print("Ch4(ROLL): ");
   // Serial.print(receive_PitchYawRollThrot[2]);
   // Serial.println("");
-   
+
+  //=======================================
+  // 조종기 Yaw값을 사용하여 가상 목표자세 쿼터니언의 z축 쿼터니언 회전
   yawRate=PI*(45/500.)*(1500-receive_PitchYawRollThrot[1])/180.*DT*1/2;
-  
   yawA[0][0]=1;
   yawA[0][1]=0;
   yawA[0][2]=0;
@@ -199,9 +302,10 @@ void loop() {
   yawA[3][1]=0;
   yawA[3][2]=0;
   yawA[3][3]=1;
-
   matCalc.calcQuaternionState(yawA,desiredQ);
-  
+
+  //=======================================
+  // 가상 목표자세 쿼터니언에 Pitch,Roll 적용
   dP=receive_PitchYawRollThrot[2]-1500;
   dR=receive_PitchYawRollThrot[0]-1500;
 
@@ -213,13 +317,22 @@ void loop() {
 
   matCalc.quaternionMultiplication(quatPitchRoll,desiredQ,finalDesiredQ);
 
-  printVQ.printQuat(finalDesiredQ);
+  //printVQ.printQuat(finalDesiredQ); //모니터에 출력
 
- 
-  // Serial.print(desiredQ[0]);
-  // Serial.print(", ");
-  // Serial.print(desiredQ[3]);
-  // Serial.println("");
+  //=======================================
+  // PID제어 초석.
+  matCalc.getControlQuaternion(finalDesiredQ,Xk,controlQ); //컨트롤 쿼터니언 계산
+  printVQ.printQuat(controlQ); //모니터에 출력
+  pidControl.calcRotateDiff(controlQ,difAngle); // 쿼터니언을 각도로 전환 [dgree]
+  printVQ.printVec(difAngle); //모니터에 출력
+  pidControl.calcPid(difAngle,pidPitchYawRoll);  //PID 계산
+
+
+  //=======================================
+
+
+  //=======================================
+
   
   while(micros()-LoopTimer < DT*1000000){ //적분 타이밍을 맞추기위해 루프.
   //Serial.println(micros()-LoopTimer);
