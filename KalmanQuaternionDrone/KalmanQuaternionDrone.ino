@@ -1,98 +1,12 @@
+const uint8_t CHANNELS=2;
+const uint8_t pwmPins[]={6,7};
+
 #include "MatrixCalc.h";
 #include "PrintVQ.h";
 #include "ConstSetting.h";
 #include "QuaternionMeasure.h";
 #include "PidControll.h";
 #include <Wire.h>;
-
-
-//===================================================================== // pwm 주파수 변경 low level programming 으로 구현 예시
-
-// #define PWM_PIN 6
-
-// void setup() {
-//   // Set the PWM frequency for pin 6 (TC4)
-//   configurePWMFrequency(PWM_PIN, 10000);  // Set the desired frequency (e.g., 10 kHz)
-// }
-
-// void loop() {
-//   // Your main code here
-// }
-
-// void configurePWMFrequency(int pin, int frequency) {
-//   // Map pin to timer/counter
-//   const uint8_t timer = g_APinDescription[pin].ulPWMChannel;
-  
-//   // Set the PWM frequency
-//   uint16_t prescaler = 1;  // Adjust prescaler as needed
-//   REG_GCLK_CLKCTRL = GCLK_CLKCTRL_ID(TC4_GCLK_ID) | // Generic Clock Timer 4
-//                      GCLK_CLKCTRL_CLKEN |           // Enable GCLK
-//                      GCLK_CLKCTRL_GEN_GCLK0;        // Use GCLK0
-
-//   REG_TC4_CTRLA &= ~TC_CTRLA_ENABLE;  // Disable TC4
-//   while (REG_TC4_STATUS & TC_STATUS_SYNCBUSY);  // Wait for synchronization
-
-//   REG_TC4_COUNT16_CC0 = F_CPU / (prescaler * frequency) - 1;
-//   while (REG_TC4_STATUS & TC_STATUS_SYNCBUSY);  // Wait for synchronization
-
-//   REG_TC4_CTRLA |= TC_CTRLA_ENABLE;  // Enable TC4
-//   while (REG_TC4_STATUS & TC_STATUS_SYNCBUSY);  // Wait for synchronization
-// }
-
-//=====================================================================  // pwm duty 변경 low level programming 으로 구현 예시
-
-// #define PWM_PIN 6
-
-// void setup() {
-//   // Initialize timer for PWM
-//   configurePWM();
-// }
-
-// void loop() {
-//   // Change duty cycle from 0 to 255 and back
-//   for (int dutyCycle = 0; dutyCycle <= 255; dutyCycle++) {
-//     setPWMDutyCycle(PWM_PIN, dutyCycle);
-//     delay(10);  // Delay for a short time to observe changes
-//   }
-
-//   for (int dutyCycle = 255; dutyCycle >= 0; dutyCycle--) {
-//     setPWMDutyCycle(PWM_PIN, dutyCycle);
-//     delay(10);  // Delay for a short time to observe changes
-//   }
-// }
-
-// void configurePWM() {
-//   // Map pin to timer/counter
-//   const uint8_t timer = g_APinDescription[PWM_PIN].ulPWMChannel;
-
-//   // Set the PWM frequency (using a prescaler of 1, adjust as needed)
-//   REG_GCLK_CLKCTRL = GCLK_CLKCTRL_ID(TC4_GCLK_ID) | 
-//                      GCLK_CLKCTRL_CLKEN | 
-//                      GCLK_CLKCTRL_GEN_GCLK0;
-
-//   REG_TC4_CTRLA &= ~TC_CTRLA_ENABLE;  
-//   while (REG_TC4_STATUS & TC_STATUS_SYNCBUSY);
-
-//   REG_TC4_CTRLA = TC_CTRLA_MODE_COUNT16 | TC_CTRLA_WAVEGEN_MFRQ;
-//   while (REG_TC4_STATUS & TC_STATUS_SYNCBUSY);
-
-//   REG_TC4_CTRLA |= TC_CTRLA_ENABLE;
-//   while (REG_TC4_STATUS & TC_STATUS_SYNCBUSY);
-// }
-
-// void setPWMDutyCycle(int pin, int dutyCycle) {
-//   const uint8_t timer = g_APinDescription[pin].ulPWMChannel;
-
-//   REG_TC4_CTRLA &= ~TC_CTRLA_ENABLE;
-//   while (REG_TC4_STATUS & TC_STATUS_SYNCBUSY);
-
-//   REG_TC4_COUNT16_CC0 = map(dutyCycle, 0, 4095, 0, REG_TC4_COUNT16_CC0_MAX);
-//   while (REG_TC4_STATUS & TC_STATUS_SYNCBUSY);
-
-//   REG_TC4_CTRLA |= TC_CTRLA_ENABLE;
-//   while (REG_TC4_STATUS & TC_STATUS_SYNCBUSY);
-// }
-//=====================================================================
 
 
 MatrixCalc matCalc; //MatrixCalc 클레스의 인스턴스 생성
@@ -195,12 +109,75 @@ void ch4_roll(){
     receive_PitchYawRollThrot[2]=ch4_time-ch4_time_save;
   }
 }
-//===================================
-// void moter_pwm_send(){
 
-// }
+void PWM_writeSetting(){
+  REG_GCLK_GENDIV = GCLK_GENDIV_DIV(1) |          // Divide the 48MHz clock source by divisor 1: 48MHz/1=48MHz
+                    GCLK_GENDIV_ID(4);            // Select Generic Clock (GCLK) 4
+  while (GCLK->STATUS.bit.SYNCBUSY);              // Wait for synchronization
 
-//===================================
+  REG_GCLK_GENCTRL = GCLK_GENCTRL_IDC |           // Set the duty cycle to 50/50 HIGH/LOW
+                     GCLK_GENCTRL_GENEN |         // Enable GCLK4
+                     GCLK_GENCTRL_SRC_DFLL48M |   // Set the 48MHz clock source
+                     GCLK_GENCTRL_ID(4);          // Select GCLK4
+  while (GCLK->STATUS.bit.SYNCBUSY);         
+
+  // Enable the port multiplexer for the digital pin D7 
+
+  for(uint8_t i = 0 ; i < CHANNELS; i++){
+    PORT->Group[g_APinDescription[pwmPins[i]].ulPort].PINCFG[g_APinDescription[pwmPins[i]].ulPin].bit.PMUXEN = 1;
+  }
+  //Connect the TCC0 timer to digital output - port pins are paired odd PMUO and even PMUXE (현 상태 = 6,7 포트 활성화)
+  //PORT->Group[g_APinDescription[2].ulPort].PMUX[g_APinDescription[2].ulPin >> 1].reg = PORT_PMUX_PMUXO_F | PORT_PMUX_PMUXE_F;
+  //PORT->Group[g_APinDescription[4].ulPort].PMUX[g_APinDescription[4].ulPin >> 1].reg = PORT_PMUX_PMUXO_F | PORT_PMUX_PMUXE_F;
+  PORT->Group[g_APinDescription[6].ulPort].PMUX[g_APinDescription[6].ulPin >> 1].reg = PORT_PMUX_PMUXO_F | PORT_PMUX_PMUXE_F;
+  //PORT->Group[g_APinDescription[11].ulPort].PMUX[g_APinDescription[11].ulPin >> 1].reg = PORT_PMUX_PMUXO_E | PORT_PMUX_PMUXE_E;
+
+  // Feed GCLK4 to TCC0 and TCC1
+  REG_GCLK_CLKCTRL = GCLK_CLKCTRL_CLKEN |         // Enable GCLK4 to TCC0 and TCC1
+                     GCLK_CLKCTRL_GEN_GCLK4 |     // Select GCLK4
+                     GCLK_CLKCTRL_ID_TCC0_TCC1;   // Feed GCLK4 to TCC0 and TCC1
+  while (GCLK->STATUS.bit.SYNCBUSY);              // Wait for synchronization
+
+  // Dual slope PWM operation: timers countinuously count up to PER register value then down 0
+  REG_TCC0_WAVE |= TCC_WAVE_POL(0xF) |         // Reverse the output polarity on all TCC0 outputs
+                    TCC_WAVE_WAVEGEN_DSBOTH;    // Setup dual slope PWM on TCC0
+  while (TCC0->SYNCBUSY.bit.WAVE);               // Wait for synchronization
+
+  // Each timer counts up to a maximum or TOP value set by the PER register,
+  // this determines the frequency of the PWM operation: 
+  REG_TCC0_PER = 4000*6;         // Set the frequency of the PWM on TCC0 to 250kHz
+  while (TCC0->SYNCBUSY.bit.PER);                // Wait for synchronization
+
+// Set the PWM signal duty cycle
+
+// REG_TCC0_CCB0 – digital output D2 (Zero Pro/M0 Pro/M0 – digital pin D4)
+// REG_TCC0_CCB1 – digital output D5
+// REG_TCC0_CCB2 – digital output D6
+// REG_TCC0_CCB3 – digital output D7
+// REG_TCC1_CCB0 – digital output D4 (Zero Pro/M0 Pro/M0 – digital pin D2)
+// REG_TCC1_CCB1 – digital output D3
+// REG_TCC2_CCB0 – digital output D11
+// REG_TCC2_CCB1 – digital output D13
+
+  REG_TCC0_CC3 = 2000*6;         // TCC0 CC3 - on D7
+  while (TCC0->SYNCBUSY.bit.CC3);                // Wait for synchronization
+  REG_TCC0_CC2 = 1000*6;         // TCC0 CC2 - on D6
+  while (TCC0->SYNCBUSY.bit.CC2);                // Wait for synchronization  
+
+  // Divide the 48MHz signal by 1 giving 48MHz (20.83ns) TCC0 timer tick and enable the outputs
+  REG_TCC0_CTRLA |= TCC_CTRLA_PRESCALER_DIV1 |    // Divide GCLK4 by 1
+                    TCC_CTRLA_ENABLE;             // Enable the TCC0 output
+  while (TCC0->SYNCBUSY.bit.ENABLE); 
+}
+
+void PWM_DutyControll_ForMoterControl(float *receive_PitchYawRollThrot){
+  receive_PitchYawRollThrot[0]
+  receive_PitchYawRollThrot[1]
+  receive_PitchYawRollThrot[2]
+  receive_PitchYawRollThrot[3]
+}
+
+
 void setup() {
   Qm.ConfigMod=0;
   Serial.begin(115200); // 시리얼 포트 9600으로 설정. *
@@ -219,12 +196,7 @@ void setup() {
   pinMode(8,INPUT);
   attachInterrupt(digitalPinToInterrupt(8), ch4_roll, CHANGE);
 
-  // analogWriteFrequency(2,250);// Right Up = 2 pin , Right Down = 3pin , Left Up= 5pin Left Down =4pin
-  // analogWriteFrequency(3,250);
-  // analogWriteFrequency(4,250);
-  // analogWriteFrequency(5,250);
-  analogWriteResolution(12);
-  // attachInterrupt(digitalPinToInterrupt(0), moter_pwm_send, RISING); 
+  PWM_writeSetting();
 
   Serial.print("준비끝");
   delay(600);
@@ -322,10 +294,10 @@ void loop() {
   //=======================================
   // PID제어 초석.
   matCalc.getControlQuaternion(finalDesiredQ,Xk,controlQ); //컨트롤 쿼터니언 계산
-  printVQ.printQuat(controlQ); //모니터에 출력
+  //printVQ.printQuat(controlQ); //모니터에 출력
   pidControl.calcRotateDiff(controlQ,difAngle); // 쿼터니언을 각도로 전환 [dgree]
-  printVQ.printVec(difAngle); //모니터에 출력
-  pidControl.calcPid(difAngle,pidPitchYawRoll);  //PID 계산
+  //printVQ.printVec(difAngle); //모니터에 출력
+  pidControl.calcPid(difAngle,pidPitchYawRoll);  //PID 계산, 수정필요
 
 
   //=======================================
