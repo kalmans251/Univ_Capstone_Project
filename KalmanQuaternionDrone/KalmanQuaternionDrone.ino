@@ -347,11 +347,16 @@ void loop() {
 
   prev_errorX_Roll=errorX_Roll;
   errorX_Roll=difAngle[0]-gyro_LPF[0];
+  // if(errorX_Roll > 100/3.){
+  //   errorX_Roll=100/3.;
+  // }else if(errorX_Roll < -100/3.){
+  //   errorX_Roll=-100/3.;
+  // }
 
   I_errorX_Roll += Ki_Roll*((errorX_Roll+prev_errorX_Roll)/2)*DT;
   
   PID_Roll=Kp_Roll*errorX_Roll + I_errorX_Roll + Kd_Roll*((errorX_Roll-prev_errorX_Roll)/DT);
-
+  PID_Roll*=3;
 // float errorY_Pitch=0;
 // float prev_errorY_Pitch=0;
 // float I_errorY_Pitch=0;
@@ -365,6 +370,7 @@ void loop() {
   I_errorY_Pitch += Ki_Pitch*((errorY_Pitch+prev_errorY_Pitch)/2)*DT;
   
   PID_Pitch=Kp_Pitch*errorY_Pitch + I_errorY_Pitch + Kd_Pitch*((errorY_Pitch-prev_errorY_Pitch)/DT);
+  PID_Pitch*=10;
 // float errorZ_Yaw=0;
 // float prev_errorZ_Yaw=0;
 // float I_errorZ_Yaw=0;
@@ -378,10 +384,10 @@ void loop() {
   I_errorZ_Yaw += Ki_Yaw*((errorZ_Yaw+prev_errorZ_Yaw)/2)*DT;
   
   PID_Yaw=Kp_Yaw*errorZ_Yaw + I_errorZ_Yaw + Kd_Yaw*((errorZ_Yaw-prev_errorZ_Yaw)/DT);
-
+  PID_Yaw*=10;
   //=======================================
 
-  saturated_Throttle= (uint16_t)(1000+(receive_PitchYawRollThrot[3]-1000)/800.); // Saturated throttle 1000~1800 
+  saturated_Throttle= 1000+(receive_PitchYawRollThrot[3]-1000)/800.; // Saturated throttle 1000~1800 
 
   if(PID_Pitch>100){ // -100 ~ 100 으로 Saturated
     PID_Pitch=100;
