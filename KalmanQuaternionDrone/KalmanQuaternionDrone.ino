@@ -49,7 +49,38 @@ float quatPitchRoll[4]={1,0,0,0};
 float finalDesiredQ[4];
 int setDesiredQ=0;
 float moter2,moter3,moter4,moter5;
-float gyro_LPF[3];
+float gyro_LPF[3]={0,0,0};
+float a_LFP=0.1;
+
+float errorX_Roll=0;
+float prev_errorX_Roll=0;
+float I_errorX_Roll=0;
+float Ki_Roll=0.01;
+float Kp_Roll=8;
+float Kd_Roll=3;
+float PID_Roll=0;
+
+float errorY_Pitch=0;
+float prev_errorY_Pitch=0;
+float I_errorY_Pitch=0;
+float Ki_Pitch=0.01;
+float Kp_Pitch=8;
+float Kd_Pitch=3;
+float PID_Pitch=0;
+
+float errorZ_Yaw=0;
+float prev_errorZ_Yaw=0;
+float I_errorZ_Yaw=0;
+float Ki_Yaw=0.01;
+float Kp_Yaw=8;
+float Kd_Yaw=3;
+float PID_Yaw=0;
+
+float saturated_Throttle;
+int motor1;
+int motor2;
+int motor3;
+int motor4;
 
 void ch1_yaw(){
   ch1_time = micros();
@@ -179,9 +210,9 @@ void PWM_DutyControll_ForMoterControl(float *PID,float Throttle){
 }
 
 void gyroData_LowPassFilter(){
-// gyro_LPF[0]=
-// gyro_LPF[1]=
-// gyro_LPF[2]=
+gyro_LPF[0]=gyro_LPF[0](1-a_LPF)+a_LPF*matCalc.temp[0];
+gyro_LPF[1]=gyro_LPF[1](1-a_LPF)+a_LPF*matCalc.temp[1];
+gyro_LPF[2]=gyro_LPF[2](1-a_LPF)+a_LPF*matCalc.temp[2];
 }
 
 void setup() {
@@ -251,14 +282,13 @@ void loop() {
   // Serial.print("Ch2(PITCH): ");
   // Serial.print(receive_PitchYawRollThrot[0]);
   // Serial.println("");
-  Serial.print("Ch3(THROT): ");
-  Serial.print(receive_PitchYawRollThrot[3]);
+  // Serial.print("Ch3(THROT): ");
+  // Serial.print(receive_PitchYawRollThrot[3]);
   // Serial.println("");
   // Serial.print("Ch4(ROLL): ");
   // Serial.print(receive_PitchYawRollThrot[2]);
-  Serial.println("");
-  REG_TCC0_CC2 = receive_PitchYawRollThrot[3]*6*4;         // TCC0 CC2 - on D6
-  while (TCC0->SYNCBUSY.bit.CC2);    
+  // Serial.println("");
+
   //=======================================
   // 조종기 Yaw값을 사용하여 가상 목표자세 쿼터니언의 z축 쿼터니언 회전
   yawRate=PI*(45/500.)*(1500-receive_PitchYawRollThrot[1])/180.*DT*1/2;
@@ -300,19 +330,98 @@ void loop() {
 
   //=======================================
   // PID제어 초석.
+  gyroData_LowPassFilter();
+  printVQ.printVec(gyro_LPF);
   matCalc.getControlQuaternion(finalDesiredQ,Xk,controlQ); //컨트롤 쿼터니언 계산
   //printVQ.printQuat(controlQ); //모니터에 출력
   pidControl.calcRotateDiff(controlQ,difAngle); // 쿼터니언을 각도로 전환 [dgree]
   //printVQ.printVec(difAngle); //모니터에 출력
-  pidControl.calcPid(difAngle,pidPitchYawRoll);  //PID 계산, 수정필요
 
+  // float errorX_Roll=0;
+  // float prev_errorX_Roll=0;
+  // float I_errorX_Roll=0;
+  // float Ki_Roll=0.01;
+  // float Kp_Roll=8;
+  // float Kd_Roll=3;
+  // float PID_Roll=0;
 
-  //=======================================
+  prev_errorX_Roll=errorX_Roll;
+  errorX_Roll=difAngle[0]-gyro_LPF[0];
 
-
-  //=======================================
-
+  I_errorX_Roll += Ki_Roll*((errorX_Roll+prev_errorX_Roll)/2)*DT;
   
+  PID_Roll=Kp_Roll*errorX_Roll + I_errorX_Roll + Kd_Roll*((errorX_Roll-prev_errorX_Roll)/DT);
+
+// float errorY_Pitch=0;
+// float prev_errorY_Pitch=0;
+// float I_errorY_Pitch=0;
+// float Ki_Pitch=0.01;
+// float Kp_Pitch=8;
+// float Kd_Pitch=3;
+// float PID_Pitch=0;
+  prev_errorY_Pitch=errorY_Pitch;
+  errorY_Pitch=difAngle[1]-gyro_LPF[1];
+
+  I_errorY_Pitch += Ki_Pitch*((errorY_Pitch+prev_errorY_Pitch)/2)*DT;
+  
+  PID_Pitch=Kp_Pitch*errorY_Pitch + I_errorY_Pitch + Kd_Pitch*((errorY_Pitch-prev_errorY_Pitch)/DT);
+// float errorZ_Yaw=0;
+// float prev_errorZ_Yaw=0;
+// float I_errorZ_Yaw=0;
+// float Ki_Yaw=0.01;
+// float Kp_Yaw=8;
+// float Kd_Yaw=3;
+// float PID_Yaw=0;
+  prev_errorZ_Yaw=errorZ_Yaw;
+  errorZ_Yaw=difAngle[2]-gyro_LPF[2];
+
+  I_errorZ_Yaw += Ki_Yaw*((errorZ_Yaw+prev_errorZ_Yaw)/2)*DT;
+  
+  PID_Yaw=Kp_Yaw*errorZ_Yaw + I_errorZ_Yaw + Kd_Yaw*((errorZ_Yaw-prev_errorZ_Yaw)/DT);
+
+  //=======================================
+
+  saturated_Throttle= (uint16_t)(1000+(receive_PitchYawRollThrot[3]-1000)/800.); // Saturated throttle 1000~1800 
+
+  if(PID_Pitch>100){ // -100 ~ 100 으로 Saturated
+    PID_Pitch=100;
+  }else if(PID_Pitch<-100){
+    PID_Pitch=-100;
+  }
+
+    if(PID_Yaw>100){ // -100 ~ 100 으로 Saturated
+    PID_Yaw=100;
+  }else if(PID_Yaw<-100){
+    PID_Yaw=-100;
+  }
+
+  if(PID_Roll>100){ // -100 ~ 100 으로 Saturated
+    PID_Roll=100;
+  }else if(PID_Roll<-100){
+    PID_Roll=-100;
+  }
+
+  //=======================================
+
+  motor1 = saturated_Throttle - PID_Pitch + PID_Yaw + PID_Roll;
+  motor2 = saturated_Throttle + PID_Pitch + PID_Yaw - PID_Roll;
+  motor3 = saturated_Throttle + PID_Pitch - PID_Yaw + PID_Roll;
+  motor4 = saturated_Throttle - PID_Pitch - PID_Yaw - PID_Roll;
+
+  //=======================================
+
+  REG_TCC0_CC2 = motor1*6*4;         // TCC0 CC2 - on D6
+  while (TCC0->SYNCBUSY.bit.CC2);    
+
+  REG_TCC0_CC3 = motor2*6*4;         // TCC0 CC2 - on D7
+  while (TCC0->SYNCBUSY.bit.CC3);   
+
+  // REG_TCC0_CC2 = motor3*6*4;         // TCC0 CC2 - on D6
+  // while (TCC0->SYNCBUSY.bit.CC2);   
+
+  // REG_TCC0_CC2 = motor4*6*4;         // TCC0 CC2 - on D6
+  // while (TCC0->SYNCBUSY.bit.CC2);   
+  //=======================================
   while(micros()-LoopTimer < DT*1000000){ //적분 타이밍을 맞추기위해 루프.
   //Serial.println(micros()-LoopTimer);
   };
