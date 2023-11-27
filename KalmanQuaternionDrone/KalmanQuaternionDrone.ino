@@ -49,6 +49,7 @@ float quatPitchRoll[4]={1,0,0,0};
 float finalDesiredQ[4];
 int setDesiredQ=0;
 float moter2,moter3,moter4,moter5;
+float gyro_LPF[3];
 
 void ch1_yaw(){
   ch1_time = micros();
@@ -83,7 +84,7 @@ void ch2_pitch(){
 void ch3_throt(){
   ch3_time = micros();
   if(ch3_State ==0){
-    if(digitalRead(6)==LOW){
+    if(digitalRead(8)==LOW){
       ch3_State=0;
       return;
     }
@@ -98,7 +99,7 @@ void ch3_throt(){
 void ch4_roll(){
   ch4_time = micros();
   if(ch4_State ==0){
-    if(digitalRead(8)==LOW){
+    if(digitalRead(9)==LOW){
       ch4_State=0;
       return;
     }
@@ -145,7 +146,7 @@ void PWM_writeSetting(){
 
   // Each timer counts up to a maximum or TOP value set by the PER register,
   // this determines the frequency of the PWM operation: 
-  REG_TCC0_PER = 4000*6;         // Set the frequency of the PWM on TCC0 to 250kHz
+  REG_TCC0_PER = 4000*6*4;         // Set the frequency of the PWM on TCC0 to 250kHz
   while (TCC0->SYNCBUSY.bit.PER);                // Wait for synchronization
 
 // Set the PWM signal duty cycle
@@ -159,9 +160,9 @@ void PWM_writeSetting(){
 // REG_TCC2_CCB0 – digital output D11
 // REG_TCC2_CCB1 – digital output D13
 
-  REG_TCC0_CC3 = 2000*6;         // TCC0 CC3 - on D7
+  REG_TCC0_CC3 = 2000*6*4;         // TCC0 CC3 - on D7
   while (TCC0->SYNCBUSY.bit.CC3);                // Wait for synchronization
-  REG_TCC0_CC2 = 1000*6;         // TCC0 CC2 - on D6
+  REG_TCC0_CC2 = 1000*6*4;         // TCC0 CC2 - on D6
   while (TCC0->SYNCBUSY.bit.CC2);                // Wait for synchronization  
 
   // Divide the 48MHz signal by 1 giving 48MHz (20.83ns) TCC0 timer tick and enable the outputs
@@ -170,13 +171,18 @@ void PWM_writeSetting(){
   while (TCC0->SYNCBUSY.bit.ENABLE); 
 }
 
-void PWM_DutyControll_ForMoterControl(float *receive_PitchYawRollThrot){
-  receive_PitchYawRollThrot[0]
-  receive_PitchYawRollThrot[1]
-  receive_PitchYawRollThrot[2]
-  receive_PitchYawRollThrot[3]
+void PWM_DutyControll_ForMoterControl(float *PID,float Throttle){
+//   receive_PitchYawRollThrot[0]
+//   receive_PitchYawRollThrot[1]
+//   receive_PitchYawRollThrot[2]
+//   receive_PitchYawRollThrot[3]
 }
 
+void gyroData_LowPassFilter(){
+// gyro_LPF[0]=
+// gyro_LPF[1]=
+// gyro_LPF[2]=
+}
 
 void setup() {
   Qm.ConfigMod=0;
@@ -191,10 +197,10 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(0), ch1_yaw, CHANGE);
   pinMode(1,INPUT);
   attachInterrupt(digitalPinToInterrupt(1), ch2_pitch, CHANGE);
-  pinMode(6,INPUT);
-  attachInterrupt(digitalPinToInterrupt(6), ch3_throt, CHANGE);
   pinMode(8,INPUT);
-  attachInterrupt(digitalPinToInterrupt(8), ch4_roll, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(8), ch3_throt, CHANGE);
+  pinMode(9,INPUT);
+  attachInterrupt(digitalPinToInterrupt(9), ch4_roll, CHANGE);
 
   PWM_writeSetting();
 
@@ -245,13 +251,14 @@ void loop() {
   // Serial.print("Ch2(PITCH): ");
   // Serial.print(receive_PitchYawRollThrot[0]);
   // Serial.println("");
-  // Serial.print("Ch3(THROT): ");
-  // Serial.print(receive_PitchYawRollThrot[3]);
+  Serial.print("Ch3(THROT): ");
+  Serial.print(receive_PitchYawRollThrot[3]);
   // Serial.println("");
   // Serial.print("Ch4(ROLL): ");
   // Serial.print(receive_PitchYawRollThrot[2]);
-  // Serial.println("");
-
+  Serial.println("");
+  REG_TCC0_CC2 = receive_PitchYawRollThrot[3]*6*4;         // TCC0 CC2 - on D6
+  while (TCC0->SYNCBUSY.bit.CC2);    
   //=======================================
   // 조종기 Yaw값을 사용하여 가상 목표자세 쿼터니언의 z축 쿼터니언 회전
   yawRate=PI*(45/500.)*(1500-receive_PitchYawRollThrot[1])/180.*DT*1/2;
